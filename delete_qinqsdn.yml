@@ -1,0 +1,97 @@
+---
+- name: Delete all VMs, QinQ SDNs, and their VNets in Proxmox
+  hosts: localhost
+  gather_facts: false
+
+  vars_files:
+    - vars.yml
+
+  tasks:
+    # Step 1: Authenticate with Proxmox
+    - name: Retrieve authentication ticket from Proxmox
+      uri:
+        url: "https://{{ api_host }}:{{ api_port }}/api2/json/access/ticket"
+        method: POST
+        body_format: json
+        body:
+          username: "{{ api_user }}"
+          password: "{{ api_password }}"
+        validate_certs: false
+      register: login_response
+
+    # Step 2: Retrieve all QinQ SDNs
+    - name: Retrieve list of all SDNs from Proxmox
+      uri:
+        url: "https://{{ api_host }}:{{ api_port }}/api2/json/cluster/sdn/zones"
+        method: GET
+        headers:
+          Cookie: "PVEAuthCookie={{ login_response.json.data.ticket }}"
+        validate_certs: false
+      register: sdn_list
+
+    # Step 3: Filter QinQ SDNs
+    - name: Extract QinQ SDN IDs from the list
+      set_fact:
+        qinq_sdns_to_delete: "{{ sdn_list.json.data | selectattr('type', 'equalto', 'qinq') | map(attribute='zone') | list }}"
+
+    # Step 4: Retrieve all VNets
+    - name: Retrieve list of all VNets from Proxmox
+      uri:
+        url: "https://{{ api_host }}:{{ api_port }}/api2/json/cluster/sdn/vnets"
+        method: GET
+        headers:
+          Cookie: "PVEAuthCookie={{ login_response.json.data.ticket }}"
+        validate_certs: false
+      register: vnet_list
+
+    # Step 5: Filter VNets for QinQ SDNs
+    - name: Extract VNets associated with QinQ SDNs
+      set_fact:
+        vnets_to_delete: "{{ vnet_list.json.data | selectattr('zone', 'in', qinq_sdns_to_delete) | map(attribute='vnet') | list }}"
+
+    # Step 6: Delete VNets
+    - name: Delete all VNets associated with QinQ SDNs
+      uri:
+        url: "https://{{ api_host }}:{{ api_port }}/api2/json/cluster/sdn/vnets/{{ item }}"
+        method: DELETE
+        headers:
+          Cookie: "PVEAuthCookie={{ login_response.json.data.ticket }}"
+          CSRFPreventionToken: "{{ login_response.json.data.CSRFPreventionToken }}"
+        validate_certs: false
+      loop: "{{ vnets_to_delete }}"
+      delegate_to: localhost
+      register: delete_vnet_output
+
+    # Step 7: Display VNet deletion responses
+    - name: Display VNet deletion responses
+      debug:
+        var: delete_vnet_output.results
+
+    # Step 8: Delete QinQ SDNs
+    - name: Delete all QinQ SDNs in Proxmox
+      uri:
+        url: "https://{{ api_host }}:{{ api_port }}/api2/json/cluster/sdn/zones/{{ item }}"
+        method: DELETE
+        headers:
+          Cookie: "PVEAuthCookie={{ login_response.json.data.ticket }}"
+          CSRFPreventionToken: "{{ login_response.json.data.CSRFPreventionToken }}"
+        validate_certs: false
+      loop: "{{ qinq_sdns_to_delete }}"
+      delegate_to: localhost
+      register: delete_sdn_output
+
+    # Step 9: Display SDN deletion responses
+    - name: Display QinQ SDN deletion responses
+      debug:
+        var: delete_sdn_output.results
+        
+    # Task 8: Apply any pending SDN changes using an external Python script
+    - name: Apply SDN changes using Python script
+      command: "python3 {{ playbook_dir }}/apply_sdn_changes.py"
+      delegate_to: localhost
+
+    # Task 9: Display a message confirming successful application of SDN changes
+    - name: Display SDN apply response
+      debug:
+        msg: "Pending SDN changes applied successfully using Python script."
+
