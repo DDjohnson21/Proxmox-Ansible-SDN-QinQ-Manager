@@ -1,0 +1,82 @@
+---
+# Playbook to Clone a Specific VM and Assign New VNet in Proxmox
+
+- name: Clone VM and create a new VNet in Proxmox
+  hosts: localhost
+  gather_facts: false
+
+  vars_files:
+    - vars.yml
+
+  vars_prompt:
+    - name: "source_vm_id"
+      prompt: "Enter the source VM ID to clone"
+      private: no
+
+  tasks:
+    # Task 1: Get the next available VM ID
+    - name: Get the next available VM ID
+      command: "python3 {{ playbook_dir }}/fetch_next_vmid.py"
+      register: next_vm_id_output
+
+    # Task 2: Set the VM ID for the cloned VM
+    - name: Set VM ID for cloned VM
+      set_fact:
+        new_vm_id: "{{ next_vm_id_output.stdout | trim }}"
+
+    # Task 3: Define new VNet name and VLAN
+    - name: Define new VNet and VLAN
+      set_fact:
+        new_vnet_name: "vnet{{ new_vm_id }}"
+        new_vlan: "{{ new_vm_id | int + 1 }}"
+
+    # Task 4: Clone the existing VM
+    - name: Clone VM in Proxmox
+      community.general.proxmox_kvm:
+        api_user: "{{ api_user }}"
+        api_password: "{{ api_password }}"
+        api_host: "{{ api_host }}"
+        api_port: "{{ api_port }}"
+        validate_certs: false
+        node: "{{ node }}"
+        vmid: "{{ source_vm_id }}"
+        clone: "cloned-vm-{{ new_vm_id }}"  # Clone name
+        newid: "{{ new_vm_id }}"            # New VM ID
+        name: "cloned-vm-{{ new_vm_id }}"   # New VM name
+        full: true                          # Full clone
+      delegate_to: localhost
+
+    # Task 5: Create a new VNet for the cloned VM
+    - name: Create new VNet
+      proxmox_sdn_vnet:
+        state: present
+        vnet: "{{ new_vnet_name }}"
+        zone: "{{ sdn_zone_params.zone }}"
+        tag: "{{ new_vlan }}"
+        api_user: "{{ api_user }}"
+        api_password: "{{ api_password }}"
+        api_host: "{{ api_host }}"
+        api_port: "{{ api_port }}"
+        validate_certs: false
+      delegate_to: localhost
+
+    # Task 6: Update the cloned VM network to use the new VNet
+    - name: Update cloned VM network
+      community.general.proxmox_kvm:
+        api_user: "{{ api_user }}"
+        api_password: "{{ api_password }}"
+        api_host: "{{ api_host }}"
+        api_port: "{{ api_port }}"
+        validate_certs: false
+        node: "{{ node }}"
+        vmid: "{{ new_vm_id }}"
+        net:
+          net0: "virtio,bridge={{ new_vnet_name }}"  # Set bridge to the new VNet
+        update: true
+        update_unsafe: true  # Allow updating unsafe parameters
+      delegate_to: localhost
+
+    # Task 7: Display success message
+    - name: Display success message
+      debug:
+        msg: "VM '{{ new_vm_id }}' cloned from VM '{{ source_vm_id }}' and assigned to new VNet '{{ new_vnet_name }}' successfully."

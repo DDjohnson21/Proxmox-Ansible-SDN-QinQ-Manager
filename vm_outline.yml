@@ -1,0 +1,32 @@
+---
+# Ansible Playbook to create a VM in Proxmox
+
+- name: Create VM in Proxmox
+  community.general.proxmox_kvm:
+    node: pve                              # Proxmox node name
+    api_user: "{{ api_user }}"
+    api_password: "{{ api_password }}"
+    api_host: "{{ api_host }}"
+    api_port: "{{ api_port }}"
+    validate_certs: false
+    vmid: "{{ vm_id }}"                    # VM ID fetched earlier
+    name: "{{ vm_name }}"                  # VM name
+    memory: 1024                           # Memory allocation (in MB)
+    cores: 1                               # Number of CPU cores
+    sockets: 1                             # Number of CPU sockets
+    cpu: host                              # CPU type
+    scsihw: virtio-scsi-pci                # SCSI controller type
+    ide:
+      ide2: "local:iso/lubuntu-24.04.1-desktop-amd64.iso,media=cdrom"  # OS ISO image
+    boot: "order=ide2;scsi0;net0"          # Boot order configuration
+    net:
+      net0: "virtio,bridge={{ vnet_name }}" # Network configuration using VNet
+    scsi:
+      scsi0: "local-lvm:32"                # Disk configuration (32GB)
+    ostype: l26                            # OS type (Linux 2.6 kernel or later)
+    agent: 1                               # Enable QEMU agent
+  delegate_to: localhost
+
+- name: Display VM creation response
+  debug:
+    msg: "VM '{{ vm_name }}' created successfully."

@@ -1,0 +1,29 @@
+- name: Delete multiple VMs in Proxmox
+  hosts: localhost
+  gather_facts: false
+
+  # Load variables from vars.yml
+  vars_files:
+    - vars.yml
+
+  vars:
+    vmids_to_delete: "{{ vmids_to_delete | from_yaml }}"  # Keep this as user input, provided dynamically or via extra_vars
+
+  tasks:
+    - name: Delete VMs in Proxmox
+      community.general.proxmox_kvm:
+        node: "{{ node }}"                  # Use the node variable from vars.yml
+        api_user: "{{ api_user }}"          # Use the API user from vars.yml
+        api_password: "{{ api_password }}"  # Use the API password from vars.yml
+        api_host: "{{ api_host }}"          # Use the API host from vars.yml
+        api_port: "{{ api_port }}"          # Use the API port from vars.yml
+        validate_certs: "{{ verify_ssl }}"  # Use the SSL verification setting from vars.yml
+        vmid: "{{ item }}"                  # VM ID to delete
+        state: "absent"
+      loop: "{{ vmids_to_delete }}"
+      delegate_to: localhost
+      register: delete_vm_output
+
+    - name: Display VM deletion response
+      debug:
+        var: delete_vm_output

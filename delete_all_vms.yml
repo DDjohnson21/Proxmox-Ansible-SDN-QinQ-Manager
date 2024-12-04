@@ -1,0 +1,55 @@
+---
+- name: Delete all VMs in Proxmox
+  hosts: localhost
+  gather_facts: false
+
+  # Load variables from vars.yml
+  vars_files:
+    - vars.yml
+
+  tasks:
+    - name: Retrieve authentication ticket from Proxmox
+      uri:
+        url: "https://{{ api_host }}:{{ api_port }}/api2/json/access/ticket"
+        method: POST
+        body_format: json
+        body:
+          username: "{{ api_user }}"
+          password: "{{ api_password }}"
+        validate_certs: false
+      register: login_response
+
+    - name: Retrieve list of all VMs from Proxmox
+      uri:
+        url: "https://{{ api_host }}:{{ api_port }}/api2/json/nodes/{{ node }}/qemu"
+        method: GET
+        headers:
+          Cookie: "PVEAuthCookie={{ login_response.json.data.ticket }}"
+        validate_certs: false
+      register: vm_list
+
+    - name: Extract VM IDs from the list
+      set_fact:
+        vmids_to_delete: "{{ vm_list.json.data | map(attribute='vmid') | list }}"
+
+    - name: Check extracted VM IDs
+      debug:
+        msg: "VMs to delete: {{ vmids_to_delete }}"
+
+    - name: Delete all VMs in Proxmox
+      community.general.proxmox_kvm:
+        node: "{{ node }}"
+        api_user: "{{ api_user }}"
+        api_password: "{{ api_password }}"
+        api_host: "{{ api_host }}"
+        api_port: "{{ api_port }}"
+        validate_certs: false
+        vmid: "{{ item }}"
+        state: "absent"
+      loop: "{{ vmids_to_delete }}"
+      delegate_to: localhost
+      register: delete_vm_output
+
+    - name: Display VM deletion responses
+      debug:
+        var: delete_vm_output.results
