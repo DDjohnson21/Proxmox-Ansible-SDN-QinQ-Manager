@@ -1,5 +1,4 @@
 # Ignore environment variable file
 .env
 vars.yml
-inventory
 venv

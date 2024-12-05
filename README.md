@@ -36,20 +36,19 @@ ansible-playbook delete_sel_vm.yml -e 'vmids_to_delete="[VM_ID, VM_ID]"'
 
 
 
-# Copy VM Command (Make sure to already make VM a template before attempting to copy VM):
+# Copy VM Command 
+NOTE: Make sure to already make VM a template before attempting to copy VM
 - Command to selected what VM to copy (VM_ID = ID of VM to delete): 
 ```
 ansible-playbook -i inventory copy_vm.yml --extra-vars "source_vm_id=VM_ID"
 ```
 
 
-# Notes: 
-
-
-
 # Installation:
 
-## Install Ansible if not done already(I am using MacOS so I am installing ansible usig brew. Use the package manger of your choice):
+Install Ansible if not done already (I am using MacOS so I am installing ansible using brew. Use the package manger of your choice):
+
+
 Install: brew install ansible
 ```
 brew install ansible
@@ -62,9 +61,9 @@ Upgrade(optional):
 ```
 brew upgrade ansible
 ```
-If not made need to have an inventory file. 
 
-## Install Packges needed:
+
+### Install Packges needed:
 Need to Install Proxmoxer:
 ```
 python -m pip install proxmoxer
@@ -80,8 +79,100 @@ Need to Install requests:
 pip install requests
 ```
 
+### Add variable files .env and vars.yml: 
+
+create a file Called -->**.env** <-- and paste the template and fill in your information. The .env file will hold varables for python Scripts 
+
+**.env template:**
+
+```
+# ========================
+# Proxmox Server Details
+# ========================
+PROXMOX_HOST=
+PORT=443
+VERIFY_SSL=False  # Set to True if SSL certificates should be verified
+
+# ========================
+# Proxmox API Credentials
+# ========================
+API_USER=root@pam
+API_PASSWORD=
+API_HOST=
+
+# ========================
+# Proxmox API URLs
+# ========================
+BASE_URL=${PROXMOX_HOST}:${PORT}/api2/json
+SDN_APPLY_URL=${BASE_URL}/cluster/sdn
+
+# ========================
+# VM Configuration
+# ========================
+VM_NAME=testvm #
+VM_MEMORY=1024  # Memory allocation in MB
+VM_CORES=1      # Number of CPU cores
+VM_SOCKETS=1    # Number of CPU sockets
+VM_CPU_TYPE=host
+VM_DISK_SIZE=32 # Disk size in GB
+VM_OS_TYPE=l26  # Linux OS type
+VM_ISO_PATH= # path to ISO
+
+# ========================
+# SDN Configuration
+# ========================
+SDN_ZONE_NAME=qinqzone        # SDN zone name
+SDN_TYPE=qinq                # SDN zone type
+SDN_MTU=1496                 # Maximum Transmission Unit (MTU)
+SDN_BRIDGE=vmbr0             # Network bridge to use
+SDN_TAG=100                  # VLAN tag for QinQ zone
+SDN_VLAN_PROTOCOL=802.1ad    # VLAN protocol for QinQ zone
+
+# ========================
+# Token Details 
+# ========================
+TOKEN_ID=
+SECRET=
+
+```
 
 
+create a file Called -->**vars.yml** <-- and paste the template and fill in your information. The vars.yml file will hold varables for yml Scripts.
+
+**vars.yml template**
+
+```
+### VM and Proxmox API Configuration
+vm_name: "testvm"
+api_host: ""
+api_user: "root@pam"
+api_password: ""
+api_port: 443
+node: ""
+
+### SDN Zone Parameters
+sdn_zone_params:
+  zone: "qinqzone"
+  type: "qinq"
+  mtu: 1496
+  bridge: "vmbr0"
+  tag: 100
+  vlan_protocol: "802.1ad"
+
+### Proxmox Server Details
+proxmox_host: ""
+port: 443
+verify_ssl: false
+
+### API Token Details
+token_id: ""
+secret: ""
+
+### API Endpoint URL
+base_url: "{{ proxmox_host }}:{{ port }}/api2/json"
+sdn_apply_url: "{{ base_url }}/cluster/sdn"
+
+```
 
 #  <span style="color:red"> Important note: </span>
 Python Scripts are running with <span style="color:red">**python3(Common for MacOS)**.</span> You may need to change the command to run with your system perfered python. Python Scripts are run in qinq_isoNet.yml, delete_qinqsdn.yml, copy_vm.yml files.

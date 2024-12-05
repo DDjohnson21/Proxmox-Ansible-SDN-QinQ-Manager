@@ -1,0 +1,2 @@
+[proxmox]
+{{ lookup('env', 'API_HOST') }} ansible_user="{{ lookup('env', 'API_USER') }}" ansible_password="{{ lookup('env', 'API_PASSWORD') }}" ansible_port="{{ lookup('env', 'PORT') }}" ansible_connection=ssh
