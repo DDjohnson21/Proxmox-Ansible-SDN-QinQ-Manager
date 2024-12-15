@@ -22,8 +22,8 @@
     # Task 3: Define the VNet name and service VLAN based on the VM ID
     - name: Define VNet name and service VLAN
       set_fact:
-        vnet_name: "vnet{{ vm_id }}"            # VNet name based on VM ID
-        service_vlan: "{{ vm_id | int + 1 }}"   # Service VLAN derived from VM ID
+        vnet_name: "vnet{{ vm_id }}" # VNet name based on VM ID
+        service_vlan: "{{ vm_id | int + 1 }}" # Service VLAN derived from VM ID
 
     # Task 4: Create an SDN zone of type 'qinq' in Proxmox
     - name: Create SDN Zone (QinQ)
@@ -78,4 +78,4 @@
 
     # Task 10: Import tasks from vm_outline.yml
     - name: Import VM creation tasks
-      import_tasks: vm_outline.yml
+      import_tasks: vm_outline.yml ## if multiple custom vms add to vm_templates folder and import FILE PATH here

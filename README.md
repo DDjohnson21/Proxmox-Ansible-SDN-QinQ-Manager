@@ -12,7 +12,7 @@ This project leverages Ansible to automate the creation and management of Proxmo
 
 - Naming VMs sequentially, starting from 100, for streamlined organization.
 
-- Easy set up of custom VM outline templates for QINQ zone and VNET. Select the desired VM outline in by replacing "vm_outline.yml" file in qinq_isoNet.yml to a new custom VM outline
+- Easy set up of custom VM outline templates for QINQ zone and VNET. Select the desired VM outline in by replacing "vm_outline.yml" file in qinq_isoNet.yml to a new custom VM outline.
 
 This automation simplifies the setup and management of Proxmox VMs and networking configurations, ensuring efficiency and consistency across deployments.
 
